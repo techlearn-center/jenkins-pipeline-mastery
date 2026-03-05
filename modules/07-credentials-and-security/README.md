@@ -2,184 +2,65 @@
 
 | | |
 |---|---|
-| **Time** | 3-5 hours |
-| **Difficulty** | Advanced |
+| **Time** | 3 hours |
+| **Difficulty** | Intermediate |
 | **Prerequisites** | Module 06 completed |
 
 ---
 
 ## Learning Objectives
 
-By the end of this module, you will be able to:
-
-- Understand the core concepts of Credentials & Security
-- Set up and configure the required tools and environments
-- Complete hands-on exercises that demonstrate practical skills
-- Apply these skills in real-world scenarios
-- Pass the module validation to prove your understanding
-
----
-
-## Concepts
-
-### What is Credentials & Security?
-
-Credentials & Security is a fundamental component of Jenkins Pipeline Mastery: Zero to Hero. In production environments, this skill is used daily by engineers to build, deploy, and maintain reliable systems.
-
-**Real-world analogy:** Think of Credentials & Security like learning to read a map before navigating a city. Once you understand the fundamentals, you can find your way through any complex system.
-
-### Why Does This Matter?
-
-Companies like Google, Netflix, Amazon, and Meta rely on these practices to:
-- Deploy thousands of times per day
-- Maintain 99.99% uptime
-- Scale to millions of users
-- Recover from failures in minutes
-
-### Key Terminology
-
-| Term | Definition |
-|---|---|
-| **Core concept 1** | The foundational building block of this module |
-| **Core concept 2** | How components interact and communicate |
-| **Core concept 3** | The pattern used for reliability and scale |
-| **Best practice** | The industry-standard approach to implementation |
+- Add and manage credentials (passwords, SSH keys, tokens, certificates)
+- Use withCredentials for secure access in pipelines
+- Configure Role-Based Access Control (RBAC)
 
 ---
 
 ## Hands-On Lab
 
-### Prerequisites Check
+### Exercise 1: Add Credentials
 
-Before starting, verify your environment:
+In Jenkins UI: Manage Jenkins → Credentials → System → Global credentials → Add:
 
-```bash
-# Check Docker is running
-docker --version
-docker compose version
+1. **Username with password** — ID: `docker-hub`, Username: `myuser`, Password: `mypass`
+2. **Secret text** — ID: `api-token`, Secret: `sk-prod-abc123xyz`
+3. **Secret file** — ID: `kubeconfig`, upload a file
 
-# Check you have the project cloned
-ls modules/07-credentials-and-security/
+### Exercise 2: Use Credentials in Pipeline
+
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Login to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-hub',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh 'echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin'
+                }
+            }
+        }
+        stage('Call API') {
+            steps {
+                withCredentials([string(credentialsId: 'api-token', variable: 'TOKEN')]) {
+                    sh 'curl -H "Authorization: Bearer $TOKEN" https://httpbin.org/get'
+                }
+            }
+        }
+    }
+}
 ```
 
-### Exercise 1: Setup and Configuration
+**Key point:** Jenkins automatically masks credential values in console output with `****`.
 
-**Goal:** Get the foundation in place for this module.
+### Exercise 3: Folder-Scoped Credentials
 
-**Step 1:** Review the starter files
-```bash
-ls modules/07-credentials-and-security/lab/starter/
-```
-
-**Step 2:** Set up the required environment
-```bash
-# Follow the specific setup for this module
-# Each command is explained below
-cd modules/07-credentials-and-security/lab/starter/
-```
-
-**Step 3:** Verify the setup
-```bash
-# Run the validation to check your setup
-bash modules/07-credentials-and-security/validation/validate.sh
-```
-
-**What you should see:** The validation script will show PASS for setup-related checks.
-
-### Exercise 2: Core Implementation
-
-**Goal:** Implement the main concept of this module.
-
-Follow the detailed instructions in the starter directory. The solution directory contains the reference implementation if you get stuck.
-
-**Key points:**
-- Read each instruction carefully before executing
-- Understand WHY each step is needed, not just WHAT to do
-- If something fails, check the troubleshooting section below
-
-### Exercise 3: Integration and Testing
-
-**Goal:** Connect this module's work with the broader system.
-
-- Verify your implementation works with previous modules
-- Run all tests and validation scripts
-- Document what you learned
-
----
-
-## Starter Files
-
-Check `lab/starter/` for:
-- Configuration templates to fill in
-- Skeleton code to complete
-- Setup scripts to run
-
-## Solution Files
-
-If you get stuck, `lab/solution/` contains:
-- Complete working configuration
-- Fully implemented code
-- Expected output examples
-
-> **Important:** Try to complete the exercises yourself first! Looking at solutions too early reduces learning.
-
----
-
-## Common Mistakes
-
-| Mistake | Symptom | Fix |
-|---|---|---|
-| Skipping prerequisites | Module exercises fail | Complete previous modules first |
-| Copy-pasting without understanding | Cannot troubleshoot issues | Read explanations, not just commands |
-| Not checking validation | Think you are done but are not | Run validate.sh after each exercise |
-| Ignoring error messages | Problems compound | Read errors carefully, they tell you what is wrong |
-
----
-
-## Self-Check Questions
-
-Test your understanding before moving on:
-
-1. What is the main purpose of Credentials & Security?
-2. How does this connect to the previous module?
-3. What would happen in production without this?
-4. Can you explain this concept to a non-technical person?
-5. What are three things that could go wrong, and how would you fix them?
-
----
-
-## You Know You Have Completed This Module When...
-
-- [ ] All exercises completed
-- [ ] Validation script passes: `bash modules/07-credentials-and-security/validation/validate.sh`
-- [ ] You can explain the concepts without looking at notes
-- [ ] You understand how this applies to real-world scenarios
-- [ ] Self-check questions answered confidently
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue: Validation script fails**
-- Re-read the exercise instructions
-- Check that Docker containers are running
-- Verify you are in the correct directory
-- Compare your work with the solution files
-
-**Issue: Docker container not starting**
-```bash
-docker compose logs <service-name>  # Check logs
-docker compose down && docker compose up -d  # Restart
-```
-
-**Issue: Permission denied**
-```bash
-chmod +x validation/validate.sh  # Make script executable
-sudo chown -R $USER .           # Fix ownership (Linux)
-```
-
----
+1. Create a folder: New Item → `team-alpha` → Folder
+2. Inside the folder, add credentials scoped to it
+3. Jobs outside the folder **cannot** access these credentials
+4. This provides team-level isolation
 
 **Next: [Module 08 →](../08-testing-and-quality-gates/)**

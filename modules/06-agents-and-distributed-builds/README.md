@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Time** | 3-5 hours |
+| **Time** | 4 hours |
 | **Difficulty** | Intermediate |
 | **Prerequisites** | Module 05 completed |
 
@@ -10,176 +10,115 @@
 
 ## Learning Objectives
 
-By the end of this module, you will be able to:
-
-- Understand the core concepts of Agents & Distributed Builds
-- Set up and configure the required tools and environments
-- Complete hands-on exercises that demonstrate practical skills
-- Apply these skills in real-world scenarios
-- Pass the module validation to prove your understanding
-
----
-
-## Concepts
-
-### What is Agents & Distributed Builds?
-
-Agents & Distributed Builds is a fundamental component of Jenkins Pipeline Mastery: Zero to Hero. In production environments, this skill is used daily by engineers to build, deploy, and maintain reliable systems.
-
-**Real-world analogy:** Think of Agents & Distributed Builds like learning to read a map before navigating a city. Once you understand the fundamentals, you can find your way through any complex system.
-
-### Why Does This Matter?
-
-Companies like Google, Netflix, Amazon, and Meta rely on these practices to:
-- Deploy thousands of times per day
-- Maintain 99.99% uptime
-- Scale to millions of users
-- Recover from failures in minutes
-
-### Key Terminology
-
-| Term | Definition |
-|---|---|
-| **Core concept 1** | The foundational building block of this module |
-| **Core concept 2** | How components interact and communicate |
-| **Core concept 3** | The pattern used for reliability and scale |
-| **Best practice** | The industry-standard approach to implementation |
+- Use Docker containers as ephemeral build agents
+- Assign different agents per stage
+- Understand Kubernetes-based dynamic agents
 
 ---
 
 ## Hands-On Lab
 
-### Prerequisites Check
+### Exercise 1: Docker Agent
 
-Before starting, verify your environment:
-
-```bash
-# Check Docker is running
-docker --version
-docker compose version
-
-# Check you have the project cloned
-ls modules/06-agents-and-distributed-builds/
+```groovy
+pipeline {
+    agent {
+        docker {
+            image 'python:3.11-slim'
+            args '-v $HOME/.cache/pip:/root/.cache/pip'
+        }
+    }
+    stages {
+        stage('Check Python') {
+            steps {
+                sh 'python --version'
+                sh 'pip --version'
+            }
+        }
+        stage('Install & Test') {
+            steps {
+                sh 'pip install requests pytest'
+                sh 'python -c "import requests; print(requests.__version__)"'
+            }
+        }
+    }
+}
 ```
 
-### Exercise 1: Setup and Configuration
+Jenkins pulls the Docker image, runs the pipeline inside it, then destroys the container. **Clean environment every time.**
 
-**Goal:** Get the foundation in place for this module.
+### Exercise 2: Different Agents per Stage
 
-**Step 1:** Review the starter files
-```bash
-ls modules/06-agents-and-distributed-builds/lab/starter/
+```groovy
+pipeline {
+    agent none
+
+    stages {
+        stage('Build Java') {
+            agent { docker { image 'maven:3.9-eclipse-temurin-17' } }
+            steps {
+                sh 'mvn --version'
+                sh 'echo "Java build done"'
+            }
+        }
+        stage('Build Frontend') {
+            agent { docker { image 'node:20-alpine' } }
+            steps {
+                sh 'node --version'
+                sh 'npm --version'
+                sh 'echo "Frontend build done"'
+            }
+        }
+        stage('Deploy') {
+            agent { docker { image 'alpine:latest' } }
+            steps {
+                sh 'echo "Deploying from lightweight container..."'
+            }
+        }
+    }
+}
 ```
 
-**Step 2:** Set up the required environment
-```bash
-# Follow the specific setup for this module
-# Each command is explained below
-cd modules/06-agents-and-distributed-builds/lab/starter/
+Each stage uses the **perfect container** for that specific task.
+
+### Exercise 3: Kubernetes Pod Template
+
+```groovy
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  containers:
+  - name: maven
+    image: maven:3.9-eclipse-temurin-17
+    command: ['sleep', '3600']
+  - name: docker
+    image: docker:dind
+    securityContext:
+      privileged: true
+'''
+        }
+    }
+    stages {
+        stage('Build') {
+            steps {
+                container('maven') {
+                    sh 'mvn --version'
+                }
+            }
+        }
+        stage('Docker') {
+            steps {
+                container('docker') {
+                    sh 'docker --version'
+                }
+            }
+        }
+    }
+}
 ```
-
-**Step 3:** Verify the setup
-```bash
-# Run the validation to check your setup
-bash modules/06-agents-and-distributed-builds/validation/validate.sh
-```
-
-**What you should see:** The validation script will show PASS for setup-related checks.
-
-### Exercise 2: Core Implementation
-
-**Goal:** Implement the main concept of this module.
-
-Follow the detailed instructions in the starter directory. The solution directory contains the reference implementation if you get stuck.
-
-**Key points:**
-- Read each instruction carefully before executing
-- Understand WHY each step is needed, not just WHAT to do
-- If something fails, check the troubleshooting section below
-
-### Exercise 3: Integration and Testing
-
-**Goal:** Connect this module's work with the broader system.
-
-- Verify your implementation works with previous modules
-- Run all tests and validation scripts
-- Document what you learned
-
----
-
-## Starter Files
-
-Check `lab/starter/` for:
-- Configuration templates to fill in
-- Skeleton code to complete
-- Setup scripts to run
-
-## Solution Files
-
-If you get stuck, `lab/solution/` contains:
-- Complete working configuration
-- Fully implemented code
-- Expected output examples
-
-> **Important:** Try to complete the exercises yourself first! Looking at solutions too early reduces learning.
-
----
-
-## Common Mistakes
-
-| Mistake | Symptom | Fix |
-|---|---|---|
-| Skipping prerequisites | Module exercises fail | Complete previous modules first |
-| Copy-pasting without understanding | Cannot troubleshoot issues | Read explanations, not just commands |
-| Not checking validation | Think you are done but are not | Run validate.sh after each exercise |
-| Ignoring error messages | Problems compound | Read errors carefully, they tell you what is wrong |
-
----
-
-## Self-Check Questions
-
-Test your understanding before moving on:
-
-1. What is the main purpose of Agents & Distributed Builds?
-2. How does this connect to the previous module?
-3. What would happen in production without this?
-4. Can you explain this concept to a non-technical person?
-5. What are three things that could go wrong, and how would you fix them?
-
----
-
-## You Know You Have Completed This Module When...
-
-- [ ] All exercises completed
-- [ ] Validation script passes: `bash modules/06-agents-and-distributed-builds/validation/validate.sh`
-- [ ] You can explain the concepts without looking at notes
-- [ ] You understand how this applies to real-world scenarios
-- [ ] Self-check questions answered confidently
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue: Validation script fails**
-- Re-read the exercise instructions
-- Check that Docker containers are running
-- Verify you are in the correct directory
-- Compare your work with the solution files
-
-**Issue: Docker container not starting**
-```bash
-docker compose logs <service-name>  # Check logs
-docker compose down && docker compose up -d  # Restart
-```
-
-**Issue: Permission denied**
-```bash
-chmod +x validation/validate.sh  # Make script executable
-sudo chown -R $USER .           # Fix ownership (Linux)
-```
-
----
 
 **Next: [Module 07 →](../07-credentials-and-security/)**

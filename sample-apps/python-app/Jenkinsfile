@@ -1,0 +1,11 @@
+pipeline {
+    agent { docker { image 'python:3.11-slim' } }
+    stages {
+        stage('Install') {
+            steps { sh 'pip install -r sample-apps/python-app/requirements.txt' }
+        }
+        stage('Test') {
+            steps { sh 'cd sample-apps/python-app && python -m pytest tests/ -v' }
+        }
+    }
+}

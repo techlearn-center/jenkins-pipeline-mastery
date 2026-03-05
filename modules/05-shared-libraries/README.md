@@ -2,184 +2,106 @@
 
 | | |
 |---|---|
-| **Time** | 3-5 hours |
-| **Difficulty** | Intermediate |
+| **Time** | 4 hours |
+| **Difficulty** | Advanced |
 | **Prerequisites** | Module 04 completed |
 
 ---
 
 ## Learning Objectives
 
-By the end of this module, you will be able to:
-
-- Understand the core concepts of Shared Libraries
-- Set up and configure the required tools and environments
-- Complete hands-on exercises that demonstrate practical skills
-- Apply these skills in real-world scenarios
-- Pass the module validation to prove your understanding
-
----
-
-## Concepts
-
-### What is Shared Libraries?
-
-Shared Libraries is a fundamental component of Jenkins Pipeline Mastery: Zero to Hero. In production environments, this skill is used daily by engineers to build, deploy, and maintain reliable systems.
-
-**Real-world analogy:** Think of Shared Libraries like learning to read a map before navigating a city. Once you understand the fundamentals, you can find your way through any complex system.
-
-### Why Does This Matter?
-
-Companies like Google, Netflix, Amazon, and Meta rely on these practices to:
-- Deploy thousands of times per day
-- Maintain 99.99% uptime
-- Scale to millions of users
-- Recover from failures in minutes
-
-### Key Terminology
-
-| Term | Definition |
-|---|---|
-| **Core concept 1** | The foundational building block of this module |
-| **Core concept 2** | How components interact and communicate |
-| **Core concept 3** | The pattern used for reliability and scale |
-| **Best practice** | The industry-standard approach to implementation |
+- Create a shared library with vars/, src/, resources/
+- Write custom pipeline steps as Groovy functions
+- Use `@Library` in Jenkinsfiles across projects
 
 ---
 
 ## Hands-On Lab
 
-### Prerequisites Check
+### Library Structure
 
-Before starting, verify your environment:
-
-```bash
-# Check Docker is running
-docker --version
-docker compose version
-
-# Check you have the project cloned
-ls modules/05-shared-libraries/
+```
+shared-library/
+  vars/
+    standardPipeline.groovy   # Custom pipeline step
+    notifySlack.groovy        # Notification helper
+    dockerBuild.groovy        # Docker build helper
+  src/
+    com/example/Utils.groovy  # Groovy class
+  resources/
+    deploy-template.yaml      # Template files
 ```
 
-### Exercise 1: Setup and Configuration
+### Exercise 1: Create a Custom Step
 
-**Goal:** Get the foundation in place for this module.
+Create `vars/standardPipeline.groovy`:
 
-**Step 1:** Review the starter files
-```bash
-ls modules/05-shared-libraries/lab/starter/
+```groovy
+// This becomes a callable step: standardPipeline(appName: 'myapp')
+def call(Map config = [:]) {
+    def appName = config.appName ?: 'app'
+    def testCmd = config.testCmd ?: 'echo "no tests"'
+    def dockerImage = config.dockerImage ?: "${appName}:latest"
+
+    pipeline {
+        agent any
+        stages {
+            stage('Checkout') {
+                steps { checkout scm }
+            }
+            stage('Build') {
+                steps { sh "echo Building ${appName}..." }
+            }
+            stage('Test') {
+                steps { sh testCmd }
+            }
+            stage('Docker Build') {
+                steps {
+                    sh "docker build -t ${dockerImage} ."
+                }
+            }
+        }
+        post {
+            success { echo "${appName} pipeline succeeded!" }
+            failure { echo "${appName} pipeline FAILED!" }
+        }
+    }
+}
 ```
 
-**Step 2:** Set up the required environment
-```bash
-# Follow the specific setup for this module
-# Each command is explained below
-cd modules/05-shared-libraries/lab/starter/
+### Exercise 2: Use in a Jenkinsfile
+
+```groovy
+@Library('my-shared-lib') _
+
+standardPipeline(
+    appName: 'user-service',
+    testCmd: 'python -m pytest tests/',
+    dockerImage: 'registry:5000/user-service:latest'
+)
 ```
 
-**Step 3:** Verify the setup
-```bash
-# Run the validation to check your setup
-bash modules/05-shared-libraries/validation/validate.sh
+Now every microservice uses the **same pipeline logic** with different parameters. Update the library once, all pipelines benefit.
+
+### Exercise 3: Helper Functions
+
+Create `vars/dockerBuild.groovy`:
+
+```groovy
+def call(String imageName, String tag = 'latest') {
+    sh "docker build -t ${imageName}:${tag} ."
+    sh "docker push ${imageName}:${tag}"
+    echo "Pushed ${imageName}:${tag}"
+}
 ```
 
-**What you should see:** The validation script will show PASS for setup-related checks.
-
-### Exercise 2: Core Implementation
-
-**Goal:** Implement the main concept of this module.
-
-Follow the detailed instructions in the starter directory. The solution directory contains the reference implementation if you get stuck.
-
-**Key points:**
-- Read each instruction carefully before executing
-- Understand WHY each step is needed, not just WHAT to do
-- If something fails, check the troubleshooting section below
-
-### Exercise 3: Integration and Testing
-
-**Goal:** Connect this module's work with the broader system.
-
-- Verify your implementation works with previous modules
-- Run all tests and validation scripts
-- Document what you learned
-
----
-
-## Starter Files
-
-Check `lab/starter/` for:
-- Configuration templates to fill in
-- Skeleton code to complete
-- Setup scripts to run
-
-## Solution Files
-
-If you get stuck, `lab/solution/` contains:
-- Complete working configuration
-- Fully implemented code
-- Expected output examples
-
-> **Important:** Try to complete the exercises yourself first! Looking at solutions too early reduces learning.
-
----
-
-## Common Mistakes
-
-| Mistake | Symptom | Fix |
-|---|---|---|
-| Skipping prerequisites | Module exercises fail | Complete previous modules first |
-| Copy-pasting without understanding | Cannot troubleshoot issues | Read explanations, not just commands |
-| Not checking validation | Think you are done but are not | Run validate.sh after each exercise |
-| Ignoring error messages | Problems compound | Read errors carefully, they tell you what is wrong |
-
----
-
-## Self-Check Questions
-
-Test your understanding before moving on:
-
-1. What is the main purpose of Shared Libraries?
-2. How does this connect to the previous module?
-3. What would happen in production without this?
-4. Can you explain this concept to a non-technical person?
-5. What are three things that could go wrong, and how would you fix them?
-
----
-
-## You Know You Have Completed This Module When...
-
-- [ ] All exercises completed
-- [ ] Validation script passes: `bash modules/05-shared-libraries/validation/validate.sh`
-- [ ] You can explain the concepts without looking at notes
-- [ ] You understand how this applies to real-world scenarios
-- [ ] Self-check questions answered confidently
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue: Validation script fails**
-- Re-read the exercise instructions
-- Check that Docker containers are running
-- Verify you are in the correct directory
-- Compare your work with the solution files
-
-**Issue: Docker container not starting**
-```bash
-docker compose logs <service-name>  # Check logs
-docker compose down && docker compose up -d  # Restart
+Use it in any Jenkinsfile:
+```groovy
+stage('Build Image') {
+    steps {
+        dockerBuild('registry:5000/myapp', env.BUILD_NUMBER)
+    }
+}
 ```
-
-**Issue: Permission denied**
-```bash
-chmod +x validation/validate.sh  # Make script executable
-sudo chown -R $USER .           # Fix ownership (Linux)
-```
-
----
 
 **Next: [Module 06 →](../06-agents-and-distributed-builds/)**

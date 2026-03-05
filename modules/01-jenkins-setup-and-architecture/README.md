@@ -2,184 +2,178 @@
 
 | | |
 |---|---|
-| **Time** | 3-5 hours |
+| **Time** | 3 hours |
 | **Difficulty** | Beginner |
-| **Prerequisites** | Docker installed, basic terminal knowledge |
+| **Prerequisites** | Docker installed |
 
 ---
 
 ## Learning Objectives
 
-By the end of this module, you will be able to:
-
-- Understand the core concepts of Jenkins Setup & Architecture
-- Set up and configure the required tools and environments
-- Complete hands-on exercises that demonstrate practical skills
-- Apply these skills in real-world scenarios
-- Pass the module validation to prove your understanding
+- Understand Jenkins architecture (controller, agents, executors, plugins)
+- Install Jenkins using Docker with auto-configured plugins
+- Navigate the Jenkins UI and create your first job
+- Understand the Jenkinsfile concept
 
 ---
 
 ## Concepts
 
-### What is Jenkins Setup & Architecture?
+### Jenkins Architecture
 
-Jenkins Setup & Architecture is a fundamental component of Jenkins Pipeline Mastery: Zero to Hero. In production environments, this skill is used daily by engineers to build, deploy, and maintain reliable systems.
+```
+┌─────────────────────────────┐
+│     Jenkins Controller       │
+│  ┌─────────┐ ┌───────────┐ │
+│  │ Web UI  │ │ Pipeline  │ │
+│  │ :8080   │ │ Engine    │ │
+│  └─────────┘ └───────────┘ │
+│  ┌─────────┐ ┌───────────┐ │
+│  │ Plugins │ │ Credential│ │
+│  │ Manager │ │ Store     │ │
+│  └─────────┘ └───────────┘ │
+└──────────┬──────────────────┘
+           │ JNLP / SSH
+    ┌──────┴──────┐
+┌───┴───┐   ┌───┴───┐
+│Agent 1│   │Agent 2│
+│Maven  │   │Node.js│
+└───────┘   └───────┘
+```
 
-**Real-world analogy:** Think of Jenkins Setup & Architecture like learning to read a map before navigating a city. Once you understand the fundamentals, you can find your way through any complex system.
-
-### Why Does This Matter?
-
-Companies like Google, Netflix, Amazon, and Meta rely on these practices to:
-- Deploy thousands of times per day
-- Maintain 99.99% uptime
-- Scale to millions of users
-- Recover from failures in minutes
-
-### Key Terminology
-
-| Term | Definition |
-|---|---|
-| **Core concept 1** | The foundational building block of this module |
-| **Core concept 2** | How components interact and communicate |
-| **Core concept 3** | The pattern used for reliability and scale |
-| **Best practice** | The industry-standard approach to implementation |
+**Controller:** The brain — schedules builds, serves UI, manages plugins.
+**Agent:** The hands — executes build steps. Can be Docker containers, VMs, or bare metal.
+**Executor:** A thread on an agent. 2 executors = 2 parallel builds on that agent.
+**Plugin:** Extends Jenkins. There are 1800+ plugins for everything from Git to Slack.
 
 ---
 
 ## Hands-On Lab
 
-### Prerequisites Check
-
-Before starting, verify your environment:
+### Step 1: Start Jenkins
 
 ```bash
-# Check Docker is running
-docker --version
-docker compose version
+cd jenkins-pipeline-mastery
+docker compose up -d --build
 
-# Check you have the project cloned
-ls modules/01-jenkins-setup-and-architecture/
+# Wait ~2 minutes for Jenkins to initialize
+# Watch the logs:
+docker logs -f jenkins
+# When you see "Jenkins is fully up and running", press Ctrl+C
 ```
 
-### Exercise 1: Setup and Configuration
+### Step 2: Access the Dashboard
 
-**Goal:** Get the foundation in place for this module.
+Open http://localhost:8080
 
-**Step 1:** Review the starter files
+The setup wizard is disabled. Jenkins is ready to use with pre-installed plugins.
+
+### Step 3: Create Your First Freestyle Job
+
+1. Click **New Item**
+2. Name: `hello-world` → Select **Freestyle project** → OK
+3. Under **Build Steps** → **Add build step** → **Execute shell**:
+
 ```bash
-ls modules/01-jenkins-setup-and-architecture/lab/starter/
+echo "=== Hello from Jenkins! ==="
+echo "Build Number: $BUILD_NUMBER"
+echo "Workspace:    $WORKSPACE"
+echo "Node:         $NODE_NAME"
+echo "Java Version: $(java -version 2>&1 | head -1)"
+date
 ```
 
-**Step 2:** Set up the required environment
-```bash
-# Follow the specific setup for this module
-# Each command is explained below
-cd modules/01-jenkins-setup-and-architecture/lab/starter/
+4. Click **Save** → **Build Now**
+5. Click build **#1** → **Console Output**
+
+**Expected output:**
+```
+=== Hello from Jenkins! ===
+Build Number: 1
+Workspace:    /var/jenkins_home/workspace/hello-world
+Node:         built-in
+Java Version: openjdk version "17.0.x"
+Finished: SUCCESS
 ```
 
-**Step 3:** Verify the setup
-```bash
-# Run the validation to check your setup
-bash modules/01-jenkins-setup-and-architecture/validation/validate.sh
+### Step 4: Create Your First Pipeline Job
+
+1. **New Item** → Name: `first-pipeline` → **Pipeline** → OK
+2. In the **Pipeline** section, paste:
+
+```groovy
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out source code...'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'echo "Compiling application..."'
+                sh 'mkdir -p build && echo "compiled binary" > build/app'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'echo "Running 42 tests... ALL PASSED"'
+            }
+        }
+        stage('Deploy') {
+            steps {
+                sh 'echo "Deploying to staging environment..."'
+            }
+        }
+    }
+
+    post {
+        success { echo 'Pipeline completed successfully!' }
+        failure { echo 'Pipeline failed!' }
+    }
+}
 ```
 
-**What you should see:** The validation script will show PASS for setup-related checks.
+3. **Save** → **Build Now** → Click the build → **Console Output**
 
-### Exercise 2: Core Implementation
+You should see each stage execute in sequence and the **Stage View** on the job page shows columns for each stage.
 
-**Goal:** Implement the main concept of this module.
+### Step 5: Explore Blue Ocean
 
-Follow the detailed instructions in the starter directory. The solution directory contains the reference implementation if you get stuck.
-
-**Key points:**
-- Read each instruction carefully before executing
-- Understand WHY each step is needed, not just WHAT to do
-- If something fails, check the troubleshooting section below
-
-### Exercise 3: Integration and Testing
-
-**Goal:** Connect this module's work with the broader system.
-
-- Verify your implementation works with previous modules
-- Run all tests and validation scripts
-- Document what you learned
-
----
-
-## Starter Files
-
-Check `lab/starter/` for:
-- Configuration templates to fill in
-- Skeleton code to complete
-- Setup scripts to run
-
-## Solution Files
-
-If you get stuck, `lab/solution/` contains:
-- Complete working configuration
-- Fully implemented code
-- Expected output examples
-
-> **Important:** Try to complete the exercises yourself first! Looking at solutions too early reduces learning.
+1. Click **Open Blue Ocean** in the left sidebar
+2. See the visual pipeline view
+3. Click on any stage to see its logs
 
 ---
 
 ## Common Mistakes
 
-| Mistake | Symptom | Fix |
-|---|---|---|
-| Skipping prerequisites | Module exercises fail | Complete previous modules first |
-| Copy-pasting without understanding | Cannot troubleshoot issues | Read explanations, not just commands |
-| Not checking validation | Think you are done but are not | Run validate.sh after each exercise |
-| Ignoring error messages | Problems compound | Read errors carefully, they tell you what is wrong |
+| Mistake | Fix |
+|---|---|
+| Jenkins stuck on loading | Wait 3-5 min. Check: `docker logs jenkins` |
+| Port 8080 already in use | Stop the other service or change the port in docker-compose.yml |
+| Plugins not installed | Rebuild: `docker compose down && docker compose up -d --build` |
 
 ---
 
 ## Self-Check Questions
 
-Test your understanding before moving on:
-
-1. What is the main purpose of Jenkins Setup & Architecture?
-2. How does this connect to the previous module?
-3. What would happen in production without this?
-4. Can you explain this concept to a non-technical person?
-5. What are three things that could go wrong, and how would you fix them?
+1. What is the difference between the controller and an agent?
+2. What is an executor and how does it relate to parallelism?
+3. Why use Pipeline jobs instead of Freestyle jobs?
+4. What does `agent any` mean in a Jenkinsfile?
+5. Where does Jenkins store its data inside the container?
 
 ---
 
 ## You Know You Have Completed This Module When...
 
-- [ ] All exercises completed
-- [ ] Validation script passes: `bash modules/01-jenkins-setup-and-architecture/validation/validate.sh`
-- [ ] You can explain the concepts without looking at notes
-- [ ] You understand how this applies to real-world scenarios
-- [ ] Self-check questions answered confidently
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue: Validation script fails**
-- Re-read the exercise instructions
-- Check that Docker containers are running
-- Verify you are in the correct directory
-- Compare your work with the solution files
-
-**Issue: Docker container not starting**
-```bash
-docker compose logs <service-name>  # Check logs
-docker compose down && docker compose up -d  # Restart
-```
-
-**Issue: Permission denied**
-```bash
-chmod +x validation/validate.sh  # Make script executable
-sudo chown -R $USER .           # Fix ownership (Linux)
-```
-
----
+- [ ] Jenkins is running at http://localhost:8080
+- [ ] You created and ran a Freestyle job
+- [ ] You created and ran a Pipeline job
+- [ ] You can see the Stage View for your pipeline
+- [ ] Validation script passes
 
 **Next: [Module 02 →](../02-freestyle-to-pipeline/)**

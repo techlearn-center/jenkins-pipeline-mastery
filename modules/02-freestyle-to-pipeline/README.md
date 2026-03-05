@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Time** | 3-5 hours |
+| **Time** | 3 hours |
 | **Difficulty** | Beginner |
 | **Prerequisites** | Module 01 completed |
 
@@ -10,176 +10,150 @@
 
 ## Learning Objectives
 
-By the end of this module, you will be able to:
-
-- Understand the core concepts of Freestyle to Pipeline
-- Set up and configure the required tools and environments
-- Complete hands-on exercises that demonstrate practical skills
-- Apply these skills in real-world scenarios
-- Pass the module validation to prove your understanding
+- Understand why pipelines replace freestyle jobs
+- Migrate a freestyle job to a Jenkinsfile
+- Store Jenkinsfiles in Git (Pipeline as Code)
+- Know Declarative vs Scripted syntax
 
 ---
 
 ## Concepts
 
-### What is Freestyle to Pipeline?
+### Why Pipelines Win
 
-Freestyle to Pipeline is a fundamental component of Jenkins Pipeline Mastery: Zero to Hero. In production environments, this skill is used daily by engineers to build, deploy, and maintain reliable systems.
+| Feature | Freestyle | Pipeline |
+|---|---|---|
+| Config stored in | Jenkins UI (not in Git) | Jenkinsfile (in Git) |
+| Code review | Not possible | PR review on Jenkinsfile |
+| Complex logic | Very limited | Full programming (parallel, conditions) |
+| Shared across projects | Copy-paste | Shared libraries |
+| Disaster recovery | Reconfigure manually | Jenkinsfile recreates everything |
 
-**Real-world analogy:** Think of Freestyle to Pipeline like learning to read a map before navigating a city. Once you understand the fundamentals, you can find your way through any complex system.
+### Declarative vs Scripted
 
-### Why Does This Matter?
+**Declarative** (use this 95% of the time):
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('Build') {
+            steps { sh 'make build' }
+        }
+    }
+}
+```
 
-Companies like Google, Netflix, Amazon, and Meta rely on these practices to:
-- Deploy thousands of times per day
-- Maintain 99.99% uptime
-- Scale to millions of users
-- Recover from failures in minutes
-
-### Key Terminology
-
-| Term | Definition |
-|---|---|
-| **Core concept 1** | The foundational building block of this module |
-| **Core concept 2** | How components interact and communicate |
-| **Core concept 3** | The pattern used for reliability and scale |
-| **Best practice** | The industry-standard approach to implementation |
+**Scripted** (when you need full Groovy flexibility):
+```groovy
+node {
+    stage('Build') {
+        sh 'make build'
+    }
+}
+```
 
 ---
 
 ## Hands-On Lab
 
-### Prerequisites Check
+### Exercise 1: Migrate a Freestyle Job
 
-Before starting, verify your environment:
+Take the freestyle job from Module 01 and convert it to a pipeline:
 
-```bash
-# Check Docker is running
-docker --version
-docker compose version
+1. **New Item** → `migrated-pipeline` → **Pipeline**
+2. Pipeline script:
 
-# Check you have the project cloned
-ls modules/02-freestyle-to-pipeline/
+```groovy
+pipeline {
+    agent any
+    stages {
+        stage('System Info') {
+            steps {
+                sh '''
+                    echo "=== System Information ==="
+                    echo "Build: #${BUILD_NUMBER}"
+                    echo "Node: ${NODE_NAME}"
+                    uname -a
+                    java -version 2>&1 | head -1
+                    python3 --version
+                '''
+            }
+        }
+        stage('Disk Check') {
+            steps {
+                sh 'df -h /var/jenkins_home'
+            }
+        }
+    }
+}
 ```
 
-### Exercise 1: Setup and Configuration
+### Exercise 2: Jenkinsfile in a Git Repository
 
-**Goal:** Get the foundation in place for this module.
+Create a Jenkinsfile for the sample Python app:
 
-**Step 1:** Review the starter files
 ```bash
-ls modules/02-freestyle-to-pipeline/lab/starter/
+# On your local machine (not inside Jenkins container)
+cat > sample-apps/python-app/Jenkinsfile << 'JFILE'
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        stage('Install') {
+            steps {
+                sh '''
+                    cd sample-apps/python-app
+                    python3 -m pip install --user -r requirements.txt
+                '''
+            }
+        }
+        stage('Lint') {
+            steps {
+                sh '''
+                    cd sample-apps/python-app
+                    python3 -m pip install --user flake8
+                    python3 -m flake8 app/ --max-line-length=120 || true
+                '''
+            }
+        }
+        stage('Test') {
+            steps {
+                sh '''
+                    cd sample-apps/python-app
+                    python3 -m pytest tests/ -v --tb=short
+                '''
+            }
+        }
+    }
+
+    post {
+        always { echo 'Pipeline finished.' }
+        success { echo 'All stages passed!' }
+        failure { echo 'Something failed. Check the logs above.' }
+    }
+}
+JFILE
 ```
-
-**Step 2:** Set up the required environment
-```bash
-# Follow the specific setup for this module
-# Each command is explained below
-cd modules/02-freestyle-to-pipeline/lab/starter/
-```
-
-**Step 3:** Verify the setup
-```bash
-# Run the validation to check your setup
-bash modules/02-freestyle-to-pipeline/validation/validate.sh
-```
-
-**What you should see:** The validation script will show PASS for setup-related checks.
-
-### Exercise 2: Core Implementation
-
-**Goal:** Implement the main concept of this module.
-
-Follow the detailed instructions in the starter directory. The solution directory contains the reference implementation if you get stuck.
-
-**Key points:**
-- Read each instruction carefully before executing
-- Understand WHY each step is needed, not just WHAT to do
-- If something fails, check the troubleshooting section below
-
-### Exercise 3: Integration and Testing
-
-**Goal:** Connect this module's work with the broader system.
-
-- Verify your implementation works with previous modules
-- Run all tests and validation scripts
-- Document what you learned
-
----
-
-## Starter Files
-
-Check `lab/starter/` for:
-- Configuration templates to fill in
-- Skeleton code to complete
-- Setup scripts to run
-
-## Solution Files
-
-If you get stuck, `lab/solution/` contains:
-- Complete working configuration
-- Fully implemented code
-- Expected output examples
-
-> **Important:** Try to complete the exercises yourself first! Looking at solutions too early reduces learning.
-
----
-
-## Common Mistakes
-
-| Mistake | Symptom | Fix |
-|---|---|---|
-| Skipping prerequisites | Module exercises fail | Complete previous modules first |
-| Copy-pasting without understanding | Cannot troubleshoot issues | Read explanations, not just commands |
-| Not checking validation | Think you are done but are not | Run validate.sh after each exercise |
-| Ignoring error messages | Problems compound | Read errors carefully, they tell you what is wrong |
 
 ---
 
 ## Self-Check Questions
 
-Test your understanding before moving on:
-
-1. What is the main purpose of Freestyle to Pipeline?
-2. How does this connect to the previous module?
-3. What would happen in production without this?
-4. Can you explain this concept to a non-technical person?
-5. What are three things that could go wrong, and how would you fix them?
+1. Why is "Pipeline as Code" better than UI-configured jobs?
+2. What happens to your Jenkins jobs if the server crashes with Freestyle vs Pipeline?
+3. When would you use Scripted syntax over Declarative?
 
 ---
 
 ## You Know You Have Completed This Module When...
 
-- [ ] All exercises completed
-- [ ] Validation script passes: `bash modules/02-freestyle-to-pipeline/validation/validate.sh`
-- [ ] You can explain the concepts without looking at notes
-- [ ] You understand how this applies to real-world scenarios
-- [ ] Self-check questions answered confidently
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue: Validation script fails**
-- Re-read the exercise instructions
-- Check that Docker containers are running
-- Verify you are in the correct directory
-- Compare your work with the solution files
-
-**Issue: Docker container not starting**
-```bash
-docker compose logs <service-name>  # Check logs
-docker compose down && docker compose up -d  # Restart
-```
-
-**Issue: Permission denied**
-```bash
-chmod +x validation/validate.sh  # Make script executable
-sudo chown -R $USER .           # Fix ownership (Linux)
-```
-
----
+- [ ] You migrated a freestyle job to a pipeline
+- [ ] You created a Jenkinsfile for a real application
+- [ ] You understand Declarative vs Scripted syntax
 
 **Next: [Module 03 →](../03-declarative-pipeline-fundamentals/)**
